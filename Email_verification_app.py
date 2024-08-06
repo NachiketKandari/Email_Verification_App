@@ -9,13 +9,18 @@ import streamlit as st
 import os
 from datetime import timedelta
 
+st.set_page_config(
+    page_title="Email Verification App",
+    page_icon="android-chrome-512x512.png",  # This sets the favicon 
+)
+
 # Function to delete the uploaded file
 def delete_file(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
 
 # Streamlit UI components
-st.title('Email Verification Tool')
+st.title('Email Verification App')
 
 uploaded_file = st.file_uploader('Choose an Excel file', type='xlsx', accept_multiple_files=False)
 start_row = st.number_input('Start Row', min_value=1, value=1)
