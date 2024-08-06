@@ -250,6 +250,8 @@ if st.button('Start Verification'):
 
         st.success(f"Email verification completed. \n| Verified : {verified_count} |\nUnverified : {unverified_count} |")
         st.success(f" Results saved to '{os.path.abspath(folder)}'")
+        st.success(f"Verified file saved as: {os.path.join(folder, f'{custom_name if custom_name else 'data'}_verified.xlsx')}")
+        st.success(f"Unverified file saved as: {os.path.join(folder, f'{custom_name if custom_name else 'data'}_unverified.xlsx')}")
 
     else:
         st.error('Please upload an Excel file and provide a save folder if not saving in the same folder.')
