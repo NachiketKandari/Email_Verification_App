@@ -9,6 +9,10 @@ import streamlit as st
 import os
 from datetime import timedelta
 
+# Function to delete the uploaded file
+def delete_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
 # Streamlit UI components
 st.title('Email Verification Tool')
@@ -191,17 +195,16 @@ if st.button('Start Verification'):
                     idx, email, error_code, error_message = result
                     row['Error Code'] = error_code
                     row['Error Message'] = error_message
-                    email_no += 1
+                    processed_count += 1
                     # Calculate elapsed time and estimated time to completion
                     time_elapsed = (datetime.now() - start_time).total_seconds()
-                    time_per_email = time_elapsed / (email_no - start_row)
-                    emails_left = end_index - email_no
+                    time_per_email = time_elapsed / processed_count
+                    emails_left = total_emails - processed_count
                     time_left = time_per_email * emails_left
                     time_left_str = str(timedelta(seconds=time_left)).split(".")[0]  # Format to H:M:S
 
-                    progress_text.text(f"Email No: {email_no-1} of {end_index} | Verified: {verified_count} | Unverified: {unverified_count} \nTime Elapsed: {time_elapsed.__round__(2)} seconds | Time to completion: {time_left_str}")
-                    progress_bar.progress((email_no - start_row) / (end_index - start_row))
-
+                    progress_text.text(f"Email No: {processed_count} of {total_emails} | Verified: {verified_count} | Unverified: {unverified_count} \nTime Elapsed: {time_elapsed.__round__(2)} seconds | Time to completion: {time_left_str}")
+                    progress_bar.progress(processed_count / total_emails)
 
                     if error_code == "250":
                         verified_rows.append(row)
@@ -210,7 +213,7 @@ if st.button('Start Verification'):
                         unverified_rows.append(row)
                         unverified_count += 1
 
-                    if index % 10 == 0:
+                    if processed_count % 10 == 0:
                         with open('progress.txt', 'w') as f:
                             f.write(str(index))
                         verified_df = pd.DataFrame(verified_rows, columns=df.columns)
@@ -234,10 +237,14 @@ if st.button('Start Verification'):
         verified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_verified.xlsx"), index=False)
         unverified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_unverified.xlsx"), index=False)
 
+        # Delete the uploaded file after processing
+        delete_file(uploaded_file.name)
+
         with open('progress.txt', 'w') as f:
             f.write('')
 
-        st.success(f"Email verification completed. \nVerified: {verified_count} \nUnverified: {unverified_count} \nResults saved to '{os.path.abspath(folder)}'")
+        st.success(f"Email verification completed. \n| Verified : {verified_count} |\nUnverified : {unverified_count} |")
+        st.success(f" Results saved to '{os.path.abspath(folder)}'")
 
     else:
         st.error('Please upload an Excel file and provide a save folder if not saving in the same folder.')
