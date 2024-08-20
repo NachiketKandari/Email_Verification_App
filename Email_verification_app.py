@@ -285,18 +285,20 @@ if st.button('Start Verification'):
         else:   
             # Add success message after the successful completion of the process
             st.success(f"Email verification completed successfully! | Verified: {verified_count} | Unverified: {unverified_count}")
+    else : 
+        st.warning("Please upload a file to start the verification process")
 
 # Show download buttons and exit button until exit is clicked
 if st.session_state.show_buttons or st.session_state.interrupted:
     
-    if st.download_button(
+    if st.session_state.verified_file_data is not None and st.download_button(
         label="Download Verified Emails",
         data=st.session_state.verified_file_data,
         file_name=f"{custom_name if custom_name else 'data'}_verified.xlsx"
     ):
         pass  # Button remains visible after click
 
-    if st.download_button(
+    if st.session_state.unverified_file_data is not None and st.download_button(
         label="Download Unverified Emails",
         data=st.session_state.unverified_file_data,
         file_name=f"{custom_name if custom_name else 'data'}_unverified.xlsx"
@@ -310,4 +312,3 @@ if st.session_state.show_buttons or st.session_state.interrupted:
         st.session_state.verified_file_data = None
         st.session_state.unverified_file_data = None
         st.rerun()
-
