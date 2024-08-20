@@ -10,6 +10,12 @@ import os
 from datetime import timedelta
 from io import BytesIO
 
+st.set_page_config(
+    page_title="Email Verification App",
+    page_icon="android-chrome-512x512.png",  # This sets the favicon 
+)
+
+
 # Initialize session state variables
 if 'verified_file_data' not in st.session_state:
     st.session_state.verified_file_data = None
@@ -22,6 +28,7 @@ if 'interrupted' not in st.session_state:
 
 # Streamlit UI components
 st.title('Email Verification App')
+
 
 uploaded_file = st.file_uploader('Choose an Excel file', type='xlsx', accept_multiple_files=False)
 start_row = st.number_input('Start Row', min_value=1, value=1)
