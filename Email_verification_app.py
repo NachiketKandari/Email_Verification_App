@@ -309,5 +309,5 @@ if st.session_state.show_buttons or st.session_state.interrupted:
         st.session_state.interrupted = False
         st.session_state.verified_file_data = None
         st.session_state.unverified_file_data = None
-        st.stop()  # Stop the execution to refresh the page
+        st.rerun()
 
