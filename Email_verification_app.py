@@ -8,16 +8,17 @@ import concurrent.futures
 import streamlit as st
 import os
 from datetime import timedelta
+from io import BytesIO
 
-st.set_page_config(
-    page_title="Email Verification App",
-    page_icon="android-chrome-512x512.png",  # This sets the favicon 
-)
-
-# Function to delete the uploaded file
-def delete_file(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
+# Initialize session state variables
+if 'verified_file_data' not in st.session_state:
+    st.session_state.verified_file_data = None
+if 'unverified_file_data' not in st.session_state:
+    st.session_state.unverified_file_data = None
+if 'show_buttons' not in st.session_state:
+    st.session_state.show_buttons = False
+if 'interrupted' not in st.session_state:
+    st.session_state.interrupted = False
 
 # Streamlit UI components
 st.title('Email Verification App')
@@ -26,14 +27,33 @@ uploaded_file = st.file_uploader('Choose an Excel file', type='xlsx', accept_mul
 start_row = st.number_input('Start Row', min_value=1, value=1)
 end_row = st.number_input('End Row', min_value=1, value=20000)
 
-save_in_same_folder = st.checkbox('Save in the same folder as the uploaded file')
-if not save_in_same_folder:
-    save_folder = st.text_input('Choose Save Folder', '')
-
 custom_name = st.text_input('Enter custom file name (optional)', '')
 
+def save_partial_results(verified_rows, unverified_rows, folder, custom_name):
+    verified_df = pd.DataFrame(verified_rows)
+    unverified_df = pd.DataFrame(unverified_rows)
+
+    verified_file_path = os.path.join(folder, f"{custom_name if custom_name else 'data'}_verified_partial.xlsx")
+    unverified_file_path = os.path.join(folder, f"{custom_name if custom_name else 'data'}_unverified_partial.xlsx")
+
+    verified_df.to_excel(verified_file_path, index=False)
+    unverified_df.to_excel(unverified_file_path, index=False)
+
+    with open(verified_file_path, 'rb') as vf:
+        st.session_state.verified_file_data = vf.read()
+    with open(unverified_file_path, 'rb') as uf:
+        st.session_state.unverified_file_data = uf.read()
+
+    st.session_state.show_buttons = True  # Show download buttons after verification
+    st.session_state.interrupted = True  # Indicate that the process was interrupted
+
+
 if st.button('Start Verification'):
-    if uploaded_file and (save_in_same_folder or save_folder):
+    # Reset the state to show buttons when verification starts
+    st.session_state.show_buttons = True
+    st.session_state.interrupted = False
+
+    if uploaded_file:
         verified_count = 0
         unverified_count = 0
         start_time = datetime.now()
@@ -47,10 +67,8 @@ if st.button('Start Verification'):
             'gmail-smtp-in.l.google.com'
         ]
 
-        logging.basicConfig(filename='email_verification.log', level=logging.INFO, 
+        logging.basicConfig(filename='email_verification.log', level=logging.INFO,
                             format='%(asctime)s %(levelname)s:%(message)s')
-
-        email_no = start_row
 
         start_index = start_row - 1
         df = pd.read_excel(uploaded_file)
@@ -190,68 +208,99 @@ if st.button('Start Verification'):
         total_emails = end_index - start_row + 1  # Calculate the total emails to be processed
         processed_count = 0
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {executor.submit(process_email, index, row['Email'], last_successful_server_index, mx_cache): (index, row) for index, row in df.iterrows()}
+        folder = "output"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
-            for future in concurrent.futures.as_completed(futures):
-                index, row = futures[future]
-                try:
-                    result = future.result()
-                    idx, email, error_code, error_message = result
-                    row['Error Code'] = error_code
-                    row['Error Message'] = error_message
-                    processed_count += 1
-                    # Calculate elapsed time and estimated time to completion
-                    time_elapsed = (datetime.now() - start_time).total_seconds()
-                    time_per_email = time_elapsed / processed_count
-                    emails_left = total_emails - processed_count
-                    time_left = time_per_email * emails_left
-                    time_left_str = str(timedelta(seconds=time_left)).split(".")[0]  # Format to H:M:S
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {executor.submit(process_email, index, row['Email'], last_successful_server_index, mx_cache): (index, row) for index, row in df.iterrows()}
 
-                    progress_text.text(f"Email No: {processed_count} of {total_emails} | Verified: {verified_count} | Unverified: {unverified_count} \nTime Elapsed: {time_elapsed.__round__(2)} seconds | Time to completion: {time_left_str}")
-                    progress_bar.progress(processed_count / total_emails)
+                for future in concurrent.futures.as_completed(futures):
+                    index, row = futures[future]
+                    try:
+                        result = future.result()
+                        idx, email, error_code, error_message = result
+                        row['Error Code'] = error_code
+                        row['Error Message'] = error_message
+                        processed_count += 1
+                        # Calculate elapsed time and estimated time to completion
+                        time_elapsed = (datetime.now() - start_time).total_seconds()
+                        time_per_email = time_elapsed / processed_count
+                        emails_left = total_emails - processed_count
+                        time_left = time_per_email * emails_left
+                        time_left_str = str(timedelta(seconds=time_left)).split(".")[0]  # Format to H:M:S
 
-                    if error_code == "250":
-                        verified_rows.append(row)
-                        verified_count += 1
-                    else:
-                        unverified_rows.append(row)
-                        unverified_count += 1
+                        progress_text.text(f"Email No: {processed_count} of {total_emails} | Verified: {verified_count} | Unverified: {unverified_count} \nTime Elapsed: {time_elapsed.__round__(2)} seconds | Time to completion: {time_left_str}")
+                        progress_bar.progress(processed_count / total_emails)
 
-                    if processed_count % 10 == 0:
-                        with open('progress.txt', 'w') as f:
-                            f.write(str(index))
-                        verified_df = pd.DataFrame(verified_rows, columns=df.columns)
-                        unverified_df = pd.DataFrame(unverified_rows, columns=df.columns.tolist() + ['Error Code', 'Error Message'])
-                        if save_in_same_folder:
-                            folder = os.path.dirname(uploaded_file.name)
+                        if error_code == "250":
+                            verified_rows.append(row)
+                            verified_count += 1
                         else:
-                            folder = save_folder
-                        verified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_verified.xlsx"), index=False)
-                        unverified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_unverified.xlsx"), index=False)
+                            unverified_rows.append(row)
+                            unverified_count += 1
 
-                except Exception as e:
-                    logging.error(f"Exception in future for index {index}: {e}")
+                        if processed_count % 10 == 0:  # Save every 10 records
+                            save_partial_results(verified_rows, unverified_rows, folder, custom_name)
 
-        verified_df = pd.DataFrame(verified_rows, columns=df.columns)
-        unverified_df = pd.DataFrame(unverified_rows, columns=df.columns.tolist() + ['Error Code', 'Error Message'])
-        if save_in_same_folder:
-            folder = os.path.dirname(uploaded_file.name)
-        else:
-            folder = save_folder
-        verified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_verified.xlsx"), index=False)
-        unverified_df.to_excel(os.path.join(folder, f"{custom_name if custom_name else 'data'}_unverified.xlsx"), index=False)
+                    except Exception as e:
+                        logging.error(f"Exception in future for index {index}: {e}")
+                        save_partial_results(verified_rows, unverified_rows, folder, custom_name)
+                        st.session_state.interrupted = True  # Mark as interrupted
+                        break
 
-        # Delete the uploaded file after processing
-        delete_file(uploaded_file.name)
+            # Final save after processing
+            verified_df = pd.DataFrame(verified_rows, columns=df.columns)
+            unverified_df = pd.DataFrame(unverified_rows, columns=df.columns.tolist() + ['Error Code', 'Error Message'])
 
-        with open('progress.txt', 'w') as f:
-            f.write('')
+            verified_file_path = os.path.join(folder, f"{custom_name if custom_name else 'data'}_verified.xlsx")
+            unverified_file_path = os.path.join(folder, f"{custom_name if custom_name else 'data'}_unverified.xlsx")
 
-        st.success(f"Email verification completed. \n| Verified : {verified_count} |\nUnverified : {unverified_count} |")
-        st.success(f" Results saved to '{os.path.abspath(folder)}'")
-        st.success(f"Verified file saved as: {os.path.join(folder, f'{custom_name if custom_name else 'data'}_verified.xlsx')}")
-        st.success(f"Unverified file saved as: {os.path.join(folder, f'{custom_name if custom_name else 'data'}_unverified.xlsx')}")
+            verified_df.to_excel(verified_file_path, index=False)
+            unverified_df.to_excel(unverified_file_path, index=False)
 
-    else:
-        st.error('Please upload an Excel file and provide a save folder if not saving in the same folder.')
+            with open(verified_file_path, 'rb') as vf:
+                st.session_state.verified_file_data = vf.read()
+            with open(unverified_file_path, 'rb') as uf:
+                st.session_state.unverified_file_data = uf.read()
+
+            st.session_state.show_buttons = True  # Show download buttons after verification
+            st.session_state.interrupted = False  # Ensure interrupted state is reset when process completes successfully
+        
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            save_partial_results(verified_rows, unverified_rows, folder, custom_name)
+            st.session_state.interrupted = True  # Mark as interrupted
+        
+        if st.session_state.interrupted :
+            st.warning("Download partially processed data below due to an interruption.")
+        else:   
+            # Add success message after the successful completion of the process
+            st.success(f"Email verification completed successfully! | Verified: {verified_count} | Unverified: {unverified_count}")
+
+# Show download buttons and exit button until exit is clicked
+if st.session_state.show_buttons or st.session_state.interrupted:
+    
+    if st.download_button(
+        label="Download Verified Emails",
+        data=st.session_state.verified_file_data,
+        file_name=f"{custom_name if custom_name else 'data'}_verified.xlsx"
+    ):
+        pass  # Button remains visible after click
+
+    if st.download_button(
+        label="Download Unverified Emails",
+        data=st.session_state.unverified_file_data,
+        file_name=f"{custom_name if custom_name else 'data'}_unverified.xlsx"
+    ):
+        pass
+
+    if st.button("Exit"):
+        # Reset session state variables and stop the script to clear buttons
+        st.session_state.show_buttons = False
+        st.session_state.interrupted = False
+        st.session_state.verified_file_data = None
+        st.session_state.unverified_file_data = None
+        st.stop()  # Stop the execution to refresh the page
+
