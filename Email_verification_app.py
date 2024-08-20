@@ -29,8 +29,11 @@ if 'interrupted' not in st.session_state:
 # Streamlit UI components
 st.title('Email Verification App')
 
+# Add a disclaimer about the Excel sheet format
+st.info("Please ensure that the Excel sheet has a column named 'Email' under which the email addresses should be listed.")
 
-uploaded_file = st.file_uploader('Choose an Excel file', type='xlsx', accept_multiple_files=False)
+
+uploaded_file = st.file_uploader('Choose an Excel', type='xlsx', accept_multiple_files=False)
 start_row = st.number_input('Start Row', min_value=1, value=1)
 end_row = st.number_input('End Row', min_value=1, value=20000)
 
