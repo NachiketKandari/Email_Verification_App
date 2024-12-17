@@ -104,17 +104,14 @@ def process_email(index, email, last_successful_server_index, mx_cache):
             logging.info(f"Domain {domain} has no valid MX records. Skipping email {email}")
             return index, email, "Invalid Domain", "Domain has no valid MX records"
 
-        # Trying default SMTP servers first
         for server_index, smtp_server in enumerate(default_smtp_servers):
             is_verified, error_code = verify_email(email, smtp_server)
             if is_verified:
                 last_successful_server_index[domain] = server_index
                 return index, email, "250", "Verified"
             elif error_code in ['550', '551', '553', '554']:
-                # Hard fail, stop trying default servers
                 break
 
-        # If default servers fail, trying MX records
         smtp_servers = mx_records
         server_index = last_successful_server_index.get(domain, 0)
         start_index = server_index
@@ -170,6 +167,7 @@ mode = st.radio("Select Verification Mode", ["Single Verification", "Batch Verif
 st.session_state.mode = mode
 
 if st.session_state.mode == "Single Verification":
+    st.subheader("🔍 Single Verification")
     single_email = st.text_input("Enter the email address to verify")
     if st.button("Check"):
         if single_email.strip():
@@ -221,6 +219,7 @@ if st.session_state.mode == "Single Verification":
             st.warning("Please enter an email address to check.")
 
 elif st.session_state.mode == "Batch Verification":
+    st.subheader("🗂 Batch Verification")
     st.info("Please ensure that the Excel sheet has a column named 'Email' under which the email addresses should be listed.")
     uploaded_file = st.file_uploader('Choose an Excel', type='xlsx', accept_multiple_files=False)
     start_row = st.number_input('Start Row', min_value=1, value=1)
