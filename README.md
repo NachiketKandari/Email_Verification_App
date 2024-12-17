@@ -77,5 +77,4 @@ Replace `app.py` with the filename of the script if different.
 - The app tries to handle temporary SMTP errors by retrying connections.
 - Valid emails are marked as "250" status, while invalid or undeliverable emails have associated error codes and messages.
 
-## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
