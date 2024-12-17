@@ -212,9 +212,9 @@ if st.session_state.mode == "Single Verification":
                                     tried_all = True
 
                     if verified:
-                        st.success("This is a verified email id!")
+                        st.success("✅ This email is verified!")
                     else:
-                        st.warning(f"Email Unverified: {result_msg}")
+                        st.warning(f"❗ Email Unverified: {result_msg}")
         else:
             st.warning("Please enter an email address to check.")
 
