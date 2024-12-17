@@ -164,7 +164,7 @@ if 'mode' not in st.session_state:
 
 st.title('Email Verification App')
 
-tab1, tab2 = st.tabs(["Single Verification", "Batch Verification"])
+tab1, tab2 = st.tabs(["Single Verification", "Bulk Verification"])
 
 with tab1 or tab1.activeTab :
     
@@ -229,8 +229,8 @@ with tab1 or tab1.activeTab :
                 st.rerun()
 
 with tab2 :
-    st.session_state.mode = "Batch Verification"
-    st.subheader("🗂 Batch Verification")
+    st.session_state.mode = "Bulk Verification"
+    st.subheader("🗂 Bulk Verification")
     st.info("Please ensure that the Excel sheet has a column named 'Email' under which the email addresses should be listed.")
     uploaded_file = st.file_uploader('Choose an Excel', type='xlsx', accept_multiple_files=False)
     start_row = st.number_input('Start Row', min_value=1, value=1)
@@ -361,14 +361,14 @@ with tab2 :
 
         if st.session_state.show_buttons or st.session_state.interrupted :
     
-            if st.session_state.mode == "Batch Verification" and st.session_state.verified_file_data is not None and st.download_button(
+            if st.session_state.mode == "Bulk Verification" and st.session_state.verified_file_data is not None and st.download_button(
                 label="Download Verified Emails",
                 data=st.session_state.verified_file_data,
                 file_name=f"{custom_name if custom_name else 'data'}_verified.xlsx"
             ):
                 pass 
 
-            if  st.session_state.mode == "Batch Verification" and st.session_state.unverified_file_data is not None and st.download_button(
+            if  st.session_state.mode == "Bulk Verification" and st.session_state.unverified_file_data is not None and st.download_button(
                 label="Download Unverified Emails",
                 data=st.session_state.unverified_file_data,
                 file_name=f"{custom_name if custom_name else 'data'}_unverified.xlsx"
@@ -383,4 +383,3 @@ with tab2 :
                 st.rerun()
 
         
-
