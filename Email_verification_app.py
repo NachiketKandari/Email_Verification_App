@@ -159,14 +159,16 @@ if 'show_buttons' not in st.session_state:
 if 'interrupted' not in st.session_state:
     st.session_state.interrupted = False
 if 'mode' not in st.session_state:
-    st.session_state.mode = 'Batch Verification'
+    st.session_state.mode = "Single Verification"
+
 
 st.title('Email Verification App')
 
-mode = st.radio("Select Verification Mode", ["Single Verification", "Batch Verification"], index=1)
-st.session_state.mode = mode
+tab1, tab2 = st.tabs(["Single Verification", "Batch Verification"])
 
-if st.session_state.mode == "Single Verification":
+with tab1 or tab1.activeTab :
+    
+    st.session_state.mode =  "Single Verification"
     st.subheader("🔍 Single Verification")
     single_email = st.text_input("Enter the email address to verify")
     if st.button("Check"):
@@ -217,8 +219,17 @@ if st.session_state.mode == "Single Verification":
                         st.warning(f"❗ Email Unverified: {result_msg}")
         else:
             st.warning("Please enter an email address to check.")
+        if st.session_state.show_buttons or st.session_state.interrupted :
 
-elif st.session_state.mode == "Batch Verification":
+            if st.button("Exit"):
+                st.session_state.show_buttons = False
+                st.session_state.interrupted = False
+                st.session_state.verified_file_data = None
+                st.session_state.unverified_file_data = None
+                st.rerun()
+
+with tab2 :
+    st.session_state.mode = "Batch Verification"
     st.subheader("🗂 Batch Verification")
     st.info("Please ensure that the Excel sheet has a column named 'Email' under which the email addresses should be listed.")
     uploaded_file = st.file_uploader('Choose an Excel', type='xlsx', accept_multiple_files=False)
@@ -348,29 +359,28 @@ elif st.session_state.mode == "Batch Verification":
         else:
             st.warning("Please upload a file to start the verification process.")
 
-        
-
-if st.session_state.show_buttons or st.session_state.interrupted :
+        if st.session_state.show_buttons or st.session_state.interrupted :
     
-    if  st.session_state.mode == "Batch Verification" and st.session_state.verified_file_data is not None and st.download_button(
-        label="Download Verified Emails",
-        data=st.session_state.verified_file_data,
-        file_name=f"{custom_name if custom_name else 'data'}_verified.xlsx"
-    ):
-        pass 
+            if st.session_state.mode == "Batch Verification" and st.session_state.verified_file_data is not None and st.download_button(
+                label="Download Verified Emails",
+                data=st.session_state.verified_file_data,
+                file_name=f"{custom_name if custom_name else 'data'}_verified.xlsx"
+            ):
+                pass 
 
-    if  st.session_state.mode == "Batch Verification" and st.session_state.unverified_file_data is not None and st.download_button(
-        label="Download Unverified Emails",
-        data=st.session_state.unverified_file_data,
-        file_name=f"{custom_name if custom_name else 'data'}_unverified.xlsx"
-    ):
-        pass
+            if  st.session_state.mode == "Batch Verification" and st.session_state.unverified_file_data is not None and st.download_button(
+                label="Download Unverified Emails",
+                data=st.session_state.unverified_file_data,
+                file_name=f"{custom_name if custom_name else 'data'}_unverified.xlsx"
+            ):
+                pass
 
-    if st.button("Exit"):
-        st.session_state.show_buttons = False
-        st.session_state.interrupted = False
-        st.session_state.verified_file_data = None
-        st.session_state.unverified_file_data = None
-        st.rerun()
+            if st.button("Exit"):
+                st.session_state.show_buttons = False
+                st.session_state.interrupted = False
+                st.session_state.verified_file_data = None
+                st.session_state.unverified_file_data = None
+                st.rerun()
 
+        
 
